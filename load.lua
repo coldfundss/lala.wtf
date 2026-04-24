@@ -1,4 +1,4 @@
--- // lala.wtf Loader Library
+-- // lala.wtf Enhanced Loader
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -6,6 +6,7 @@ local UIS = game:GetService("UserInputService")
 
 local Loader = {}
 
+-- // Better Dragging Logic
 local function dragify(Frame)
     local dragToggle, dragInput, dragStart, startPos
     Frame.InputBegan:Connect(function(input)
@@ -29,57 +30,60 @@ local function dragify(Frame)
         if input == dragInput and dragToggle then
             local Delta = input.Position - dragStart
             local Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
-            TweenService:Create(Frame, TweenInfo.new(0.15), {Position = Position}):Play()
+            TweenService:Create(Frame, TweenInfo.new(0.15, Enum.EasingStyle.Quart), {Position = Position}):Play()
         end
     end)
 end
 
 function Loader:Create(info)
     local name = "lala.wtf"
-    local image = info.ImageID
-    local savekey = info.SaveKey
     local callback = info.Callback 
+    local savekey = info.SaveKey
     
-    -- // Cleanup & Setup
+    -- // Cleanup
     if game.CoreGui:FindFirstChild("LalaLoader") then game.CoreGui.LalaLoader:Destroy() end
-    if not isfile then -- Mocking for Studio testing if needed
-        getgenv().isfile = function() return false end
-        getgenv().writefile = function() end
-        getgenv().readfile = function() return "" end
-    end
 
-    -- // Blur Effect
+    -- // Blur Background
     local Blur = Instance.new("BlurEffect")
-    Blur.Size = 20
+    Blur.Name = "LalaBlur"
+    Blur.Size = 24
     Blur.Parent = Lighting
 
     local Login = Instance.new("ScreenGui")
     Login.Name = "LalaLoader"
     Login.Parent = game.CoreGui
+    Login.IgnoreGuiInset = true
 
-    -- // Snow System
+    -- // Enhanced Snow System
     local SnowContainer = Instance.new("Frame")
     SnowContainer.Size = UDim2.new(1, 0, 1, 0)
     SnowContainer.BackgroundTransparency = 1
     SnowContainer.Parent = Login
+    SnowContainer.ZIndex = 1
 
     local function CreateFlake()
+        local size = math.random(2, 4)
         local flake = Instance.new("Frame")
-        flake.Size = UDim2.new(0, 2, 0, 2)
+        flake.Size = UDim2.new(0, size, 0, size)
         flake.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        flake.BackgroundTransparency = 0.5
+        flake.BackgroundTransparency = math.random(3, 6) / 10
         flake.BorderSizePixel = 0
-        flake.Position = UDim2.new(math.random(), 0, -0.1, 0)
+        flake.Position = UDim2.new(math.random(), 0, -0.05, 0)
         flake.Parent = SnowContainer
 
-        local fallSpeed = math.random(2, 5)
-        local drift = math.random(-100, 100) / 1000
+        local fallSpeed = math.random(15, 40) / 10000
+        local swayAmplitude = math.random(1, 3) / 1000
+        local swaySpeed = math.random(1, 4)
+        local startTime = tick()
 
         local conn
         conn = RunService.RenderStepped:Connect(function()
             if not flake.Parent then conn:Disconnect() return end
-            flake.Position = flake.Position + UDim2.new(drift, 0, 0, fallSpeed)
-            if flake.Position.Y.Offset > SnowContainer.AbsoluteSize.Y + 10 then
+            local elapsed = tick() - startTime
+            local sway = math.sin(elapsed * swaySpeed) * swayAmplitude
+            flake.Position = flake.Position + UDim2.new(sway, 0, fallSpeed, 0)
+            
+            if flake.Position.Y.Scale > 1.05 then
                 flake:Destroy()
                 conn:Disconnect()
             end
@@ -87,106 +91,94 @@ function Loader:Create(info)
     end
 
     task.spawn(function()
-        while task.wait(0.1) do
+        while task.wait(0.15) do
             if not Login.Parent then break end
             CreateFlake()
         end
     end)
 
-    -- // Main UI (No UICorners)
+    -- // Main Menu (Sharper & Higher Contrast)
     local Main = Instance.new("Frame")
     Main.Name = "Main"
     Main.Parent = Login
-    Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Main.BorderColor3 = Color3.fromRGB(45, 45, 45)
+    Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Slightly lighter for visibility
+    Main.BorderColor3 = Color3.fromRGB(60, 60, 60) -- Defined border
     Main.BorderSizePixel = 1
-    Main.Position = UDim2.new(0.5, -223, 0.5, -56)
-    Main.Size = UDim2.new(0, 447, 0, 130)
-    Main.ZIndex = 5
+    Main.Position = UDim2.new(0.5, -200, 0.5, -65)
+    Main.Size = UDim2.new(0, 400, 0, 130)
+    Main.ZIndex = 10
 
-    local AccentBar = Instance.new("Frame")
-    AccentBar.Size = UDim2.new(1, 0, 0, 2)
-    AccentBar.BackgroundColor3 = Color3.fromRGB(80, 120, 255) -- Subtle Blue Accent
-    AccentBar.BorderSizePixel = 0
-    AccentBar.Parent = Main
+    local Accent = Instance.new("Frame")
+    Accent.Size = UDim2.new(1, 0, 0, 1)
+    Accent.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    Accent.BorderSizePixel = 0
+    Accent.Parent = Main
 
     local Title = Instance.new("TextLabel")
     Title.Parent = Main
     Title.BackgroundTransparency = 1
-    Title.Position = UDim2.new(0, 10, 0, 10)
-    Title.Size = UDim2.new(0, 200, 0, 20)
+    Title.Position = UDim2.new(0, 12, 0, 10)
+    Title.Size = UDim2.new(1, -24, 0, 20)
     Title.Font = Enum.Font.Code
-    Title.Text = "LALA.WTF // PREMIER"
-    Title.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Title.Text = "LALA.WTF // LOADER"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
     Title.TextSize = 14
     Title.TextXAlignment = Enum.TextXAlignment.Left
 
-    local AuthKeyFrame = Instance.new("Frame")
-    AuthKeyFrame.Name = "AuthKey"
-    AuthKeyFrame.Parent = Main
-    AuthKeyFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    AuthKeyFrame.BorderColor3 = Color3.fromRGB(35, 35, 35)
-    AuthKeyFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
-    AuthKeyFrame.Size = UDim2.new(0.9, 0, 0, 30)
+    local InputFrame = Instance.new("Frame")
+    InputFrame.Parent = Main
+    InputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    InputFrame.BorderColor3 = Color3.fromRGB(45, 45, 45)
+    InputFrame.Position = UDim2.new(0.05, 0, 0.35, 0)
+    InputFrame.Size = UDim2.new(0.9, 0, 0, 32)
 
     local TextBox = Instance.new("TextBox")
-    TextBox.Parent = AuthKeyFrame
+    TextBox.Parent = InputFrame
     TextBox.BackgroundTransparency = 1
     TextBox.Size = UDim2.new(1, -10, 1, 0)
     TextBox.Position = UDim2.new(0, 10, 0, 0)
     TextBox.Font = Enum.Font.Code
-    TextBox.PlaceholderText = "Enter Access Key..."
-    TextBox.PlaceholderColor3 = Color3.fromRGB(80, 80, 80)
+    TextBox.PlaceholderText = "Paste key here..."
+    TextBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
     TextBox.Text = ""
     TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextBox.TextSize = 14
+    TextBox.TextSize = 13
     TextBox.TextXAlignment = Enum.TextXAlignment.Left
 
-    local Load = Instance.new("TextButton")
-    Load.Name = "Load"
-    Load.Parent = Main
-    Load.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Load.BorderColor3 = Color3.fromRGB(45, 45, 45)
-    Load.Position = UDim2.new(0.05, 0, 0.7, 0)
-    Load.Size = UDim2.new(0.9, 0, 0, 30)
-    Load.Font = Enum.Font.Code
-    Load.Text = "AUTHENTICATE"
-    Load.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Load.TextSize = 13
-    Load.AutoButtonColor = false
+    local LoadBtn = Instance.new("TextButton")
+    LoadBtn.Parent = Main
+    LoadBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    LoadBtn.BorderColor3 = Color3.fromRGB(50, 50, 50)
+    LoadBtn.Position = UDim2.new(0.05, 0, 0.68, 0)
+    LoadBtn.Size = UDim2.new(0.9, 0, 0, 32)
+    LoadBtn.Font = Enum.Font.Code
+    LoadBtn.Text = "ENTER"
+    LoadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LoadBtn.TextSize = 13
+    LoadBtn.AutoButtonColor = false
 
-    -- // Button Hover Effects
-    Load.MouseEnter:Connect(function() Load.BackgroundColor3 = Color3.fromRGB(35, 35, 35) end)
-    Load.MouseLeave:Connect(function() Load.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end)
+    -- // Interaction
+    LoadBtn.MouseEnter:Connect(function() LoadBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40) end)
+    LoadBtn.MouseLeave:Connect(function() LoadBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30) end)
 
-    -- // Functions
     local function Success()
-        Blur:Destroy()
+        if Lighting:FindFirstChild("LalaBlur") then Lighting.LalaBlur:Destroy() end
         Login:Destroy()
     end
 
-    Load.MouseButton1Click:Connect(function()
+    LoadBtn.MouseButton1Click:Connect(function()
         if savekey then
-            pcall(function() writefile(name..".key", TextBox.Text) end)
+            pcall(function() writefile("lala_key.txt", TextBox.Text) end)
         end
-        -- Run callback; we assume the developer calls Loader:Destroy in their callback
-        task.spawn(callback, TextBox.Text, Success)
+        callback(TextBox.Text, Success)
     end)
     
-    if savekey and isfile(name..".key") then
-        TextBox.Text = readfile(name..".key")
+    -- // Auto-load Key
+    if savekey and isfile and isfile("lala_key.txt") then
+        TextBox.Text = readfile("lala_key.txt")
     end
 
     dragify(Main)
-end
-
-function Loader:Destroy()
-    if game.CoreGui:FindFirstChild("LalaLoader") then
-        game.CoreGui.LalaLoader:Destroy()
-    end
-    if Lighting:FindFirstChild("Blur") then
-        Lighting.Blur:Destroy()
-    end
 end
 
 return Loader
