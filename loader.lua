@@ -1,4 +1,15 @@
--- lala.wtf noob lala
+--[[
+    lala.wtf UI Library
+    Full rewrite with:
+      - Device detection (Mobile / PC / Console)
+      - Full touch support on Sliders (drag + tap value label to type)
+      - Full touch support on ColorPicker (sat + hue touch drag)
+      - Toggle UI + Lock UI side buttons (opt-in via MobileSupport flag in Window options)
+      - Typewriter effect on menu title (opt-in via Typewriter = true in Window options)
+      - All controller keycodes registered
+      - Slider Set() properly moves the accent bar
+      - Dragging works on mobile and PC
+]]
 
 local Library = {}
 do
@@ -18,15 +29,16 @@ do
         Connections   = {},
         UIFont        = Font.fromEnum(Enum.Font.GothamBold),
         FontSize      = 12,
-		
+        -- Device info (set during Window creation)
         IsMobile  = false,
         IsConsole = false,
         IsPC      = false,
-        
+        -- Internal side-button refs (set when MobileSupport = true)
+        _ToggleBtn = nil,
         _LockBtn   = nil,
         _UILocked  = false,
         Keys = {
-			
+            -- Keyboard modifiers
             [Enum.KeyCode.LeftShift]       = "LS",
             [Enum.KeyCode.RightShift]      = "RS",
             [Enum.KeyCode.LeftControl]     = "LC",
@@ -34,19 +46,19 @@ do
             [Enum.KeyCode.LeftAlt]         = "LA",
             [Enum.KeyCode.RightAlt]        = "RA",
             [Enum.KeyCode.CapsLock]        = "CAPS",
-
+            -- Numbers
             [Enum.KeyCode.One]   = "1", [Enum.KeyCode.Two]   = "2",
             [Enum.KeyCode.Three] = "3", [Enum.KeyCode.Four]  = "4",
             [Enum.KeyCode.Five]  = "5", [Enum.KeyCode.Six]   = "6",
             [Enum.KeyCode.Seven] = "7", [Enum.KeyCode.Eight] = "8",
             [Enum.KeyCode.Nine]  = "9", [Enum.KeyCode.Zero]  = "0",
-			
+            -- Numpad
             [Enum.KeyCode.KeypadOne]   = "Num1", [Enum.KeyCode.KeypadTwo]   = "Num2",
             [Enum.KeyCode.KeypadThree] = "Num3", [Enum.KeyCode.KeypadFour]  = "Num4",
             [Enum.KeyCode.KeypadFive]  = "Num5", [Enum.KeyCode.KeypadSix]   = "Num6",
             [Enum.KeyCode.KeypadSeven] = "Num7", [Enum.KeyCode.KeypadEight] = "Num8",
             [Enum.KeyCode.KeypadNine]  = "Num9", [Enum.KeyCode.KeypadZero]  = "Num0",
-            
+            -- Symbols
             [Enum.KeyCode.Minus]           = "-",
             [Enum.KeyCode.Equals]          = "=",
             [Enum.KeyCode.Tilde]           = "~",
@@ -63,11 +75,11 @@ do
             [Enum.KeyCode.Asterisk]        = "*",
             [Enum.KeyCode.Plus]            = "+",
             [Enum.KeyCode.Backquote]       = "`",
-            
+            -- Mouse
             [Enum.UserInputType.MouseButton1] = "MB1",
             [Enum.UserInputType.MouseButton2] = "MB2",
             [Enum.UserInputType.MouseButton3] = "MB3",
-            
+            -- Controller
             [Enum.KeyCode.ButtonA]      = "A",
             [Enum.KeyCode.ButtonB]      = "B",
             [Enum.KeyCode.ButtonX]      = "X",
@@ -86,7 +98,8 @@ do
             [Enum.KeyCode.DPadRight]    = "D→",
         },
     }
-	
+
+    -- Internal flag tables
     local Flags     = {}
     local Dropdowns = {}
     local Pickers   = {}
@@ -101,6 +114,9 @@ do
     local LP  = game:GetService("Players").LocalPlayer
     local Mouse = LP:GetMouse()
 
+    -- ────────────────────────────────────────────────────────────
+    -- Device detection helper
+    -- ────────────────────────────────────────────────────────────
     local function DetectDevice()
         if UIS.TouchEnabled and not UIS.KeyboardEnabled then
             return "Mobile"
@@ -111,7 +127,9 @@ do
         end
     end
 
-
+    -- ────────────────────────────────────────────────────────────
+    -- Misc helpers
+    -- ────────────────────────────────────────────────────────────
     function Library:Connection(Signal, Callback)
         return Signal:Connect(Callback)
     end
@@ -133,6 +151,9 @@ do
            and Mouse.Y >= AbsPos.Y and Mouse.Y <= AbsPos.Y + AbsSize.Y
     end
 
+    -- ────────────────────────────────────────────────────────────
+    -- Config helpers (unchanged)
+    -- ────────────────────────────────────────────────────────────
     function Library:GetConfig()
         local Config = ""
         for Index, Value in pairs(self.Flags) do
@@ -198,6 +219,9 @@ do
         end
     end
 
+    -- ────────────────────────────────────────────────────────────
+    -- SetOpen  (unchanged logic)
+    -- ────────────────────────────────────────────────────────────
     function Library:SetOpen(bool)
         if typeof(bool) ~= "boolean" then return end
         Library.Open = bool
@@ -266,6 +290,9 @@ do
         }
     end
 
+    -- ────────────────────────────────────────────────────────────
+    -- Side button factory  (used by Window when MobileSupport=true)
+    -- ────────────────────────────────────────────────────────────
     local function MakeSideBtn(parent, label, ypos)
         local Wrap = Instance.new("Frame", parent)
         Wrap.Size             = UDim2.new(0,56,0,19)
@@ -313,6 +340,9 @@ do
         return Btn, Bar, Wrap, Inn
     end
 
+    -- ────────────────────────────────────────────────────────────
+    -- Typewriter effect
+    -- ────────────────────────────────────────────────────────────
     local function StartTypewriter(label, text)
         task.spawn(function()
             while true do
@@ -330,6 +360,9 @@ do
         end)
     end
 
+    -- ────────────────────────────────────────────────────────────
+    -- ColorPicker  (with touch support)
+    -- ────────────────────────────────────────────────────────────
     function Library:NewPicker(default, defaultalpha, parent, count, flag, callback)
         local Icon   = Instance.new("TextButton", parent)
         local Grad   = Instance.new("UIGradient", Icon)
@@ -383,6 +416,7 @@ do
         Hue.ZIndex           = 1220
         Hue.AutoButtonColor  = false
 
+        -- State
         local hue, sat, val   = default:ToHSV()
         local alpha           = defaultalpha
         local curhuesizey     = hue
@@ -413,6 +447,7 @@ do
         set(default, defaultalpha)
         curhuesizey = hue
 
+        -- Sat drag (mouse)
         local slidingSat = false
         local function updateSat(pos, doSet)
             local sx = math.clamp((pos.X - Sat.AbsolutePosition.X) / Sat.AbsoluteSize.X, 0, 1)
@@ -433,7 +468,9 @@ do
                 slidingSat = false
                 updateSat(i.Position, true)
             end
-        
+        end)
+
+        -- Hue drag (mouse)
         local slidingHue = false
         local function updateHue(pos, doSet)
             local sy = 1 - math.clamp((pos.Y - Hue.AbsolutePosition.Y) / Hue.AbsoluteSize.Y, 0, 1)
@@ -456,7 +493,8 @@ do
                 updateHue(i.Position, true)
             end
         end)
-				
+
+        -- Shared move handler (mouse + touch)
         Library:Connection(UIS.InputChanged, function(i)
             local isMove = i.UserInputType == Enum.UserInputType.MouseMovement
                         or i.UserInputType == Enum.UserInputType.Touch
@@ -484,10 +522,13 @@ do
         return colorpickertypes, Window
     end
 
-    
+    -- ────────────────────────────────────────────────────────────
+    -- Library functions
+    -- ────────────────────────────────────────────────────────────
     local Pages    = Library.Pages
     local Sections = Library.Sections
 
+    -- ── Window ──────────────────────────────────────────────────
     function Library:Window(Options)
         local device = DetectDevice()
         Library.IsMobile  = device == "Mobile"
@@ -506,6 +547,7 @@ do
             Title    = menuName,
         }
 
+        -- Instances
         local ScreenGui   = Instance.new("ScreenGui",
             game:GetService("RunService"):IsStudio()
                 and LP.PlayerGui or game.CoreGui)
@@ -661,6 +703,7 @@ do
             end
         end)
 
+        -- Touch drag on TopBar
         Top.InputBegan:Connect(function(i)
             if Library._UILocked then return end
             if i.UserInputType == Enum.UserInputType.Touch then
@@ -684,12 +727,14 @@ do
             end
         end)
 
+        -- Mobile size clamp
         if Library.IsMobile then
             local VP = workspace.CurrentCamera.ViewportSize
             Main.Size     = UDim2.new(0, math.min(580, VP.X - 8), 0, 260)
             Main.Position = UDim2.new(0.5,0,0.5,0)
         end
 
+        -- ── Side buttons (Toggle / Lock) ─────────────────────────
         if useMobile then
             local VP = workspace.CurrentCamera.ViewportSize
 
@@ -699,6 +744,7 @@ do
             Library._ToggleBtn = TBtn
             Library._LockBtn   = LBtn
 
+            -- Draggable side panel
             do
                 local on, st, sy = false, nil, nil
                 local function startDrag(pos)
@@ -754,6 +800,7 @@ do
             end)
         end
 
+        -- ── Default keybinds ─────────────────────────────────────
         Library:Connection(UIS.InputBegan, function(i, gpe)
             if gpe or Library._UILocked then return end
             if i.KeyCode == Enum.KeyCode.RightShift
@@ -772,6 +819,7 @@ do
         return setmetatable(Base, Library)
     end
 
+    -- ── Page ────────────────────────────────────────────────────
     function Library:Page(Options)
         local Page = {
             Window   = self,
@@ -925,6 +973,7 @@ do
         return setmetatable(Page, Library.Pages)
     end
 
+    -- ── Section ─────────────────────────────────────────────────
     function Pages:Section(Options)
         local Section = {
             Window    = self.Window,
@@ -1281,6 +1330,7 @@ do
             return KB
         end
 
+        -- Colorpicker sub-element
         function Toggle:Colorpicker(Props)
             local P = Props or {}
             Toggle.Colorpickers += 1
@@ -1405,6 +1455,7 @@ do
         ValueL.ZIndex               = 105
         ValueL.TextXAlignment       = Slider.Name and Enum.TextXAlignment.Right or Enum.TextXAlignment.Center
 
+        -- Inline TextBox for typing a value (hidden until focused)
         TypeBox.Name                 = "TypeBox"
         TypeBox.Size                 = UDim2.new(1,0,1,0)
         TypeBox.BackgroundTransparency=1
@@ -1419,6 +1470,7 @@ do
         TypeBox.Visible              = false
         TypeBox.TextXAlignment       = Enum.TextXAlignment.Center
 
+        -- ── Set logic ──
         local Sliding = false
         local Val     = Slider.State
 
@@ -1447,6 +1499,7 @@ do
             Set(value)
         end
 
+        -- TypeBox: hide ValueL while editing, show when done
         TypeBox.Focused:Connect(function()
             ValueL.Visible  = false
             TypeBox.Visible = true
@@ -1461,6 +1514,7 @@ do
             TypeBox.Text     = ""
         end)
 
+        -- Tap value label to start typing (mobile + PC)
         ValueL.InputBegan:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.Touch
             or i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1473,6 +1527,7 @@ do
             end
         end)
 
+        -- Drag on Frame (mouse)
         Library:Connection(Frame.InputBegan, function(i)
             if i.UserInputType == Enum.UserInputType.MouseButton1 then
                 Sliding = true; Slide(i.Position)
@@ -1517,6 +1572,7 @@ do
         return Slider
     end
 
+    -- ── List (Dropdown) ─────────────────────────────────────────
     function Sections:List(Options)
         local P = Options or {}
         local Dropdown = {
@@ -1638,6 +1694,7 @@ do
         return Dropdown
     end
 
+    -- ── Keybind ─────────────────────────────────────────────────
     function Sections:Keybind(Options)
         local P = Options or {}
         local KB = {
@@ -1739,6 +1796,7 @@ do
         return KB
     end
 
+    -- ── Textbox ─────────────────────────────────────────────────
     function Sections:Textbox(Options)
         local P = Options or {}
         local Textbox = {
@@ -1778,7 +1836,8 @@ do
         Flags[Textbox.Flag]=set
         return Textbox
     end
-─
+
+    -- ── Button ──────────────────────────────────────────────────
     function Sections:Button(Options)
         local P = Options or {}
         local Button = {
@@ -1813,6 +1872,7 @@ do
         return Button
     end
 
+    -- ── Colorpicker (section-level) ─────────────────────────────
     function Sections:Colorpicker(Options)
         local P = Options or {}
         local CP = {
@@ -1845,6 +1905,7 @@ do
         return CP
     end
 
+    -- ── Multibox ────────────────────────────────────────────────
     function Sections:Multibox(Options)
         local P = Options or {}
         local Dropdown = {
